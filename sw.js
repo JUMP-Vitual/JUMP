@@ -1,6 +1,6 @@
 // Jonathan Porras | Preparación Física — Service Worker v24
 // Cambiar el número de versión obliga a los celulares a borrar la caché vieja de JUMP
-const CACHE = 'jp-v37';
+const CACHE = 'jp-v38';
 const PRECACHE = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

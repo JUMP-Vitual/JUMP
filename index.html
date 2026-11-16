@@ -104,6 +104,34 @@ input[type=date]{color-scheme:dark}
 .ex-exp{border-top:1px solid var(--line-soft);padding-top:8px}.ex-exp ol,.ex-exp ul{margin:2px 0 0 18px;line-height:1.55}
 .ex-exp-k{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text);margin:10px 0 3px}
 .tmr-cue{font-size:17px;font-weight:700;color:var(--accent);margin-top:8px}
+/* ── Cronómetro de bloque y registro ── */
+#tmr{overflow-y:auto;align-items:safe center}
+.tmr-bar{height:4px;background:#1C2027;border-radius:99px;overflow:hidden;margin:6px auto 0;max-width:320px}
+.tmr-bar i{display:block;height:100%;background:var(--accent);box-shadow:0 0 8px var(--accent);transition:width .3s}
+.tmr-list{margin:14px auto 0;max-width:360px;text-align:left;border-top:1px solid var(--line-soft)}
+.tmr-list div{display:flex;justify-content:space-between;gap:10px;padding:7px 2px;border-bottom:1px solid var(--line-soft);font-size:15px;font-weight:600}
+.tmr-list b{color:var(--accent);white-space:nowrap}
+.tmr-count{display:flex;align-items:center;justify-content:center;gap:22px;margin:16px 0 4px}
+.tmr-count button{width:58px;height:58px;border-radius:50%;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font-size:28px;font-weight:700;cursor:pointer;line-height:1}
+.tmr-count button:first-child{border-color:var(--line);background:rgba(28,31,37,.7);color:var(--muted)}
+.tmr-count b{display:block;font-family:'Saira Condensed',sans-serif;font-weight:800;font-size:46px;line-height:1;min-width:70px}
+.tmr-count b small{font-size:22px;color:var(--dim)}
+.tmr-count span{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.tmr-rest{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px}
+.tmr-rest .chip{padding:9px 2px;font-size:12px}
+.blk-zone{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft)}
+.blk-zone .btn{margin-bottom:6px}
+.log-done{border-style:solid;border-color:rgba(139,224,184,.4);margin-top:0}
+.log-done .v{font-weight:700;font-size:15px;margin-bottom:4px}
+.log-ex-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line-soft);font-size:14px}
+.log-ex-row span:first-child{color:var(--muted)}.log-ex-row span:last-child{font-weight:600;text-align:right}
+#blocklog .modal{max-width:460px;max-height:90vh;overflow-y:auto;text-align:left;padding:22px 18px}
+#blocklog .grid2 .inp,#blocklog .grid3 .inp{margin-bottom:0}
+#bl-rpe{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+#bl-rpe .chip{padding:9px 0}
+.bl-ex{padding:12px 0;border-top:1px solid var(--line-soft)}
+.bl-ex .ex-name{font-size:15.5px}
+.bl-ex .label{font-size:10px;margin-bottom:4px}
 .need-list{display:grid;gap:6px}
 .need{display:flex;align-items:center;gap:10px;text-align:left;width:100%;background:rgba(10,11,13,.5);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--muted);font:inherit;font-weight:600;font-size:14.5px;cursor:pointer}
 .need.on{color:var(--text);border-color:var(--accent);background:var(--accent-soft)}
@@ -1544,11 +1572,14 @@ function renderAdminPlans(){
   h+=planSections.map((s,i)=>sectionEditorHtml(s,i,cl)).join('')+exNamesDatalist();
   h+=`<div class="grid2"><button class="btn btn-dark" onclick="addSection()">+ Sección</button><button class="btn" onclick="savePlan()" ${planSections.length?'':'disabled'}>Guardar plan</button></div>`;
   if(existing)h+=`<button class="btn btn-danger" onclick="deletePlan()">Borrar entrenamiento de esta fecha</button>`;
-  const targets=actives.filter(c=>c.id!==planSelClient);
-  if(planSections.length&&targets.length){
-    h+=`<div class="card"><div class="card-title">Copiar a otro cliente</div><div class="label">Cliente destino</div>
-      <select class="inp" id="copy-target-client">${targets.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
-      <button class="btn btn-ghost" onclick="copyPlanToOther()">Copiar entrenamiento del ${fmt(planSelDate)}</button></div>`;
+  if(planSections.length&&cl){
+    const targets=[cl,...actives.filter(c=>c.id!==planSelClient)];
+    h+=`<div class="card"><div class="card-title">Copiar entrenamiento</div>
+      <p class="note" style="margin:-4px 0 12px;">Copia el entrenamiento del ${fmt(planSelDate)} al cliente y la fecha que elijas.</p>
+      <div class="grid2"><div><div class="label">Cliente destino</div>
+      <select class="inp" id="copy-target-client">${targets.map(c=>`<option value="${c.id}">${esc(c.name)}${c.id===planSelClient?' (este cliente)':''}</option>`).join('')}</select></div>
+      <div><div class="label">Fecha destino</div><input class="inp" type="date" id="copy-target-date" value="${addDays(planSelDate,7)}"/></div></div>
+      <button class="btn btn-ghost" onclick="copyPlanToOther()">Copiar entrenamiento</button></div>`;
   }
   if(cl)h+=`<button class="btn btn-dark" onclick="openLoad('${cl.id}')">Ver carga de ${esc(firstName(cl.name))}</button>`;
   el.innerHTML=h;
@@ -1557,10 +1588,11 @@ function chipsHtml(list,colors,current,sid,field){
   return`<div class="chip-grid">${list.map((v,i)=>{return`<button type="button" class="chip ${current===v?'active':''}" onclick="setSecChoice('${sid}','${field}',${i})">${esc(v)}</button>`;}).join('')}</div>`;
 }
 function sectionEditorHtml(sec,i,cl){
-  const logOn=!!(cl?.logEnabled||{})[sec.id];const mc=METHOD_COLORS[sec.method]||'#2E7FC0';
+  const lg=cl?clientLogFor(cl,planSelDate,sec.id):null;
   return`<div class="card" id="sec-${sec.id}">
     <div class="sec-head"><div class="card-title" style="margin:0;">Sección ${i+1}</div>
-      <div class="actions"><button class="btn btn-sm ${logOn?'':'btn-dark'}" onclick="toggleSectionLog('${sec.id}')">${logOn?'Registro: sí':'Registro: no'}</button><button class="btn btn-sm btn-danger" onclick="delSection('${sec.id}')">Quitar</button></div></div>
+      <div class="actions"><button class="btn btn-sm btn-danger" onclick="delSection('${sec.id}')">Quitar</button></div></div>
+    ${hasLog(lg)?`<div class="log-box log-done" style="margin-bottom:12px;"><div class="label" style="color:var(--ok);">Registro de ${esc(firstName(cl.name)||'cliente')}</div>${logHtml(lg)}</div>`:''}
     <div class="label">Tipo</div>${chipsHtml(SECS,TYPE_COLORS,sec.name,sec.id,'name')}
     <div class="label">Método</div>${chipsHtml(METHODS,METHOD_COLORS,sec.method,sec.id,'method')}
     ${isCombat(cl)?`<div class="label">Capacidad principal (combate)</div><div class="chip-grid">${Object.entries(CAPS).map(([k,v])=>`<button type="button" class="chip ${sec.capacity===k?'active':''}" onclick="setSecCap('${sec.id}','${k}')">${v.l}</button>`).join('')}</div>`:''}
@@ -1641,11 +1673,17 @@ function reprogramExpiredPlan(oldDate){
   const plans=[...(cl.plans||[]).filter(p=>p.date!==planSelDate),{date:planSelDate,sections:clean(src.sections||[])}];
   cl.plans=plans;adminUpdate(cl.id,{plans});planSectionsKey='';renderAdminPlans();
 }
+// Copia con IDs nuevos para que los registros de cada fecha no se mezclen
+function freshIds(sections){return clean(sections||[]).map(s=>({...s,id:genId(),exercises:(s.exercises||[]).map(e=>({...e,id:genId()}))}));}
 function copyPlanToOther(){
   const tid=document.getElementById('copy-target-client')?.value;const t=findClient(tid);if(!t)return;
-  if((t.plans||[]).some(p=>p.date===planSelDate)&&!confirm(`${t.name} ya tiene un entrenamiento el ${fmt(planSelDate)}. ¿Reemplazarlo?`))return;
-  const plans=[...(t.plans||[]).filter(p=>p.date!==planSelDate),{date:planSelDate,sections:clean(planSections)}];
-  t.plans=plans;adminUpdate(t.id,{plans}).then(()=>alert(`Entrenamiento copiado a ${t.name} para el ${fmt(planSelDate)}.`));
+  const date=document.getElementById('copy-target-date')?.value||'';
+  if(!DATE_RE.test(date)){alert('Elegí la fecha destino.');return;}
+  if(t.id===planSelClient&&date===planSelDate){alert('Elegí una fecha distinta a la del entrenamiento que estás copiando.');return;}
+  if((t.plans||[]).some(p=>p.date===date)&&!confirm(`${t.name} ya tiene un entrenamiento el ${fmt(date)}. ¿Reemplazarlo?`))return;
+  const plans=[...(t.plans||[]).filter(p=>p.date!==date),{date,sections:freshIds(planSections)}];
+  t.plans=plans;adminUpdate(t.id,{plans}).then(()=>showToast(`Entrenamiento copiado a ${t.name} para el ${fmt(date)}.`));
+  if(t.id===planSelClient)renderAdminPlans();
 }
 
 /* ── Carga de entrenamiento (RPE) ── */
@@ -1677,15 +1715,16 @@ function renderIntensityBlock(c){
 function renderAdminWorkoutLogs(c){
   const logs=c.workoutLogs||{};const byDate={};
   Object.keys(logs).forEach(k=>{
-    const i=k.indexOf('_');const date=k.slice(0,i),secId=k.slice(i+1);const e=logs[k]||{};
-    if(!(e.time||e.rounds||e.reps||e.weight))return;
-    let secName='Bloque';(c.plans||[]).forEach(p=>{const s=(p.sections||[]).find(x=>x.id===secId);if(s)secName=s.name;});
-    (byDate[date]=byDate[date]||[]).push({secName,e});
+    const i=k.indexOf('_');if(i<0)return;const date=k.slice(0,i),secId=k.slice(i+1);const e=logs[k]||{};
+    if(!DATE_RE.test(date)||!hasLog(e))return;
+    let secName=e.sec||'Bloque',method=e.method||'';(c.plans||[]).forEach(p=>{const s=(p.sections||[]).find(x=>x.id===secId);if(s){secName=s.name;method=method||s.method;}});
+    (byDate[date]=byDate[date]||[]).push({secName,method,e});
   });
-  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));if(!dates.length)return'';
-  const block=d=>`<div style="margin-bottom:10px;"><div class="label" style="color:var(--accent);">${fmt(d)}</div>${byDate[d].map(({secName,e})=>`<div class="box" style="margin-bottom:6px;"><div class="k">${esc(secName)}</div><div class="v">${[e.time&&'Tiempo: '+e.time,e.rounds&&'Rondas: '+e.rounds,e.reps&&'Reps: '+e.reps,e.weight&&'Peso: '+e.weight].filter(Boolean).map(esc).join(' · ')}</div></div>`).join('')}</div>`;
+  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+  if(!dates.length)return`<div class="card"><div class="card-title">Resultados registrados</div><div class="note">Todavía no registró ningún bloque. Lo hace desde "Iniciar bloque" en cada sección de su plan.</div></div>`;
+  const block=d=>`<div style="margin-bottom:12px;"><div class="label" style="color:var(--accent);text-transform:none;letter-spacing:.06em;font-size:12.5px;">${esc(fmtLong(d))} · ${fmt(d)}</div>${byDate[d].map(({secName,method,e})=>`<div class="box" style="margin-bottom:6px;"><div class="k">${esc(secName)}${method?' · '+esc(method):''}</div><div style="margin-top:4px;">${logHtml(e)}</div></div>`).join('')}</div>`;
   let s='';if(logSearchDate)s=byDate[logSearchDate]?block(logSearchDate):'<div class="note">Sin resultados para esa fecha.</div>';
-  return`<div class="card"><div class="card-title">Resultados registrados <span class="note">(${dates.length} fechas)</span></div>${dates.slice(0,2).map(block).join('')}
+  return`<div class="card"><div class="card-title">Resultados registrados <span class="note">(${dates.length} fechas)</span></div>${dates.slice(0,3).map(block).join('')}
     <div class="label" style="margin-top:6px;">Buscar por fecha</div>
     <div style="display:flex;gap:8px;"><input type="date" class="inp" style="margin:0;" value="${logSearchDate}" onchange="logSearchDate=this.value;renderAdminLoad()"/>${logSearchDate?`<button class="btn btn-dark btn-sm" onclick="logSearchDate='';renderAdminLoad()">Limpiar</button>`:''}</div>
     <div style="margin-top:10px;">${s}</div></div>`;
@@ -1804,13 +1843,13 @@ function renderClientProfile(){
         <button class="btn btn-sm ${st==='inactivo'?'':'btn-warn'}" onclick="toggleInactive('${c.id}')">${st==='inactivo'?'Reactivar':'Pausar'}</button>
         ${phone?`<a class="btn btn-wa btn-sm" href="${waTo(c.phone,'Hola '+firstName(c.name)+', ')}" target="_blank" rel="noopener">WhatsApp</a>`:''}
         <button class="btn btn-dark btn-sm" onclick="startCopyPlan('${c.id}')">Copiar planes</button>
-        ${copySourceId&&copySourceId!==c.id?`<button class="btn btn-sm" onclick="pastePlanTo('${c.id}')">Pegar planes aquí</button>`:''}
         ${c.uid?`<button class="btn btn-dark btn-sm" onclick="this.closest('.card').querySelector('.reset-steps').hidden=false">Cambiar contraseña del cliente</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="deleteClient('${c.id}')">Eliminar</button>
       </div>
       ${c.uid?resetStepsHtml(c):''}
-      ${copySourceId?`<div class="alert info" style="margin:12px 0 0;"><span>Planes copiados de ${esc(findClient(copySourceId)?.name||'')}. Abrí el cliente destino y tocá "Pegar planes aquí".</span><button class="link" onclick="copySourceId=null;renderClientProfile()">Cancelar</button></div>`:''}
+      ${copySourceId?`<div class="alert info" style="margin:12px 0 0;"><span>Copiando planes de ${esc(findClient(copySourceId)?.name||'')}. ${copySourceId===c.id?'Abrí el cliente destino para pegarlos, o duplicalos aquí abajo en otras fechas.':'Elegí la fecha y los planes aquí abajo.'}</span><button class="link" onclick="copySourceId=null;renderClientProfile()">Cancelar</button></div>`:''}
     </div>`;
+    if(copySourceId)h+=pastePanelHtml(c);
   }
   if((c.intake||[]).length){
     const groups={};c.intake.forEach(r=>(groups[r.s]=groups[r.s]||[]).push(r));
@@ -1916,12 +1955,52 @@ function renewDate(c){return nextMonthDue(c.paymentDue&&!isPast(c.paymentDue)?c.
 function renewPayment(id){const c=findClient(id);if(!c)return;const nd=renewDate(c);if(!confirm(`Nueva fecha de pago: ${fmt(nd)}. ¿Confirmar?`))return;adminUpdate(id,{paymentDue:nd});}
 function toggleInactive(id){const c=findClient(id);if(!c)return;const v=!c.inactive;if(!confirm(v?'¿Pausar este cliente? No podrá entrar a la app hasta que lo reactivés.':'¿Reactivar este cliente?'))return;adminUpdate(id,{inactive:v});}
 function deleteClient(id){const c=findClient(id);if(!c)return;const n=prompt(`Para eliminar permanentemente a ${c.name} y todo su historial, escribí ELIMINAR. Recomendado: descargá un respaldo antes.`);if(String(n||'').trim().toUpperCase()!=='ELIMINAR')return;db.collection('clients').doc(id).delete().then(backToClientList).catch(e=>alert('No se pudo eliminar: '+authMsg(e)));}
-function startCopyPlan(id){const c=findClient(id);if(!c||!(c.plans||[]).length){alert('Este cliente no tiene planes para copiar.');return;}copySourceId=id;renderClientProfile();}
-function pastePlanTo(id){
+/* Copiar planes de un cliente y pegarlos en otro (o en el mismo) eligiendo la fecha */
+let pasteSel=new Set(),pasteMode='from',pasteStart=today(),pasteReplace=false;
+function startCopyPlan(id){
+  const c=findClient(id);if(!c||!(c.plans||[]).length){alert('Este cliente no tiene planes para copiar.');return;}
+  copySourceId=id;pasteMode='from';pasteStart=today();pasteReplace=false;
+  // Por defecto quedan marcados los planes de hoy en adelante; si no hay, el más reciente
+  const up=(c.plans||[]).filter(p=>p.date>=today()).map(p=>p.date);
+  pasteSel=new Set(up.length?up:[(c.plans||[]).map(p=>p.date).sort().pop()]);
+  renderClientProfile();
+}
+function togglePasteSel(d){if(pasteSel.has(d))pasteSel.delete(d);else pasteSel.add(d);renderClientProfile();}
+function pastePlanList(src,c){
+  const self=src.id===c.id,mode=self?'from':pasteMode;
+  const sel=(src.plans||[]).filter(p=>pasteSel.has(p.date)).sort((a,b)=>a.date.localeCompare(b.date));
+  const off=mode==='from'&&sel.length&&DATE_RE.test(pasteStart)?daysBetween(sel[0].date,pasteStart):0;
+  const have=new Set((c.plans||[]).map(p=>p.date));
+  const res=sel.map(p=>({p,to:addDays(p.date,off),clash:have.has(addDays(p.date,off))}));
+  return{self,mode,off,res,clash:res.filter(r=>r.clash)};
+}
+function pastePanelHtml(c){
+  const src=findClient(copySourceId);if(!src)return'';
+  const {self,mode,off,res,clash}=pastePlanList(src,c);
+  const P=(src.plans||[]).slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,40);
+  const n=res.filter(r=>pasteReplace||!r.clash).length;
+  return`<div class="card hl" id="paste-card"><div class="card-title">${self?'Duplicar planes en otras fechas':'Pegar planes de '+esc(src.name)}</div>
+    ${self?'':`<div class="seg"><button class="${mode==='from'?'active':''}" onclick="pasteMode='from';renderClientProfile()">Elegir fecha</button><button class="${mode==='same'?'active':''}" onclick="pasteMode='same';renderClientProfile()">Mismas fechas</button></div>`}
+    ${mode==='from'?`<div class="label">Fecha en la que empieza</div><input class="inp" type="date" value="${esc(pasteStart)}" onchange="pasteStart=this.value;renderClientProfile()"/>
+      <p class="note" style="margin:-4px 0 12px;">El primer plan marcado queda en esta fecha y los demás conservan la misma separación de días.</p>`:''}
+    <div class="label">Planes a copiar (${res.length} marcado${res.length===1?'':'s'})</div>
+    <div class="need-list" style="max-height:320px;overflow-y:auto;margin-bottom:12px;">${P.map(p=>{const on=pasteSel.has(p.date),r=res.find(x=>x.p.date===p.date);
+      return`<button type="button" class="need ${on?'on':''}" onclick="togglePasteSel('${p.date}')"><span class="need-box">${on?'✓':''}</span><span style="flex:1;">${fmt(p.date)} · ${(p.sections||[]).length} sección(es)</span>${r?`<span style="font-size:13px;color:${r.clash?'var(--warn)':'var(--accent)'};">→ ${fmt(r.to)}</span>`:''}</button>`;}).join('')}</div>
+    ${clash.length?`<label class="check"><input type="checkbox" ${pasteReplace?'checked':''} onchange="pasteReplace=this.checked;renderClientProfile()"/> Reemplazar ${clash.length} fecha${clash.length===1?'':'s'} que ya ${clash.length===1?'tiene':'tienen'} entrenamiento (${clash.slice(0,4).map(r=>fmt(r.to)).join(', ')}${clash.length>4?'…':''}). Si no lo marcás, esas fechas no se tocan.</label>`:''}
+    <button class="btn" onclick="pasteSelected('${c.id}')" ${n?'':'disabled'}>Pegar ${n} plan${n===1?'':'es'} en ${esc(firstName(c.name)||'este cliente')}</button></div>`;
+}
+function pasteSelected(id){
   const src=findClient(copySourceId),t=findClient(id);if(!src||!t)return;
-  const have=new Set((t.plans||[]).map(p=>p.date));const add=(src.plans||[]).filter(p=>!have.has(p.date));
-  if(!confirm(`Se van a agregar ${add.length} plan(es) de ${src.name} a ${t.name} (las fechas que ya tiene no se tocan). ¿Continuar?`))return;
-  adminUpdate(id,{plans:[...(t.plans||[]),...clean(add)]});copySourceId=null;renderClientProfile();
+  const {mode,res}=pastePlanList(src,t);
+  if(mode==='from'&&!DATE_RE.test(pasteStart)){alert('Elegí la fecha en la que empieza.');return;}
+  const add=res.filter(r=>pasteReplace||!r.clash).map(r=>({date:r.to,sections:freshIds(r.p.sections)}));
+  if(!add.length){alert('Esas fechas ya tienen entrenamiento. Marcá "Reemplazar" o elegí otra fecha.');return;}
+  const L=add.map(p=>fmt(p.date));
+  if(!confirm(`Se van a copiar ${add.length} plan(es) a ${t.name}: ${L.slice(0,10).join(', ')}${L.length>10?'…':''}. ¿Continuar?`))return;
+  const dates=new Set(add.map(p=>p.date));
+  const plans=[...(t.plans||[]).filter(p=>!dates.has(p.date)),...add];t.plans=plans;
+  adminUpdate(id,{plans}).then(()=>showToast(`${add.length} plan(es) copiado(s) a ${t.name}.`));
+  copySourceId=null;renderClientProfile();
 }
 // Copia completa de todos los clientes (incluye archivados) en un archivo que Jonathan guarda en su computadora
 function downloadBackup(){
@@ -2181,9 +2260,13 @@ function renderClientPlan(){
       const yt=safeUrl(ex.youtube),img=safeImg(ex.image);
       h+=`<div class="ex"><div class="ex-row"><div style="flex:1;min-width:0;"><div class="ex-name">${esc(ex.name||'Ejercicio')}</div>${ex.reps?`<div class="ex-reps">${esc(ex.reps)}</div>`:''}${ex.notes?`<div class="ex-notes">${esc(ex.notes)}</div>`:''}</div>${videoBtnHtml(yt)}</div>${img?`<img class="ex-img" src="${img}" alt=""/>`:''}</div>`;
     });
-    if((c.logEnabled||{})[sec.id]){
-      h+=`<div class="log-box"><div class="label" style="color:var(--accent);">Mi resultado</div><div class="grid2">${[['time','Tiempo','Ej: 8:42'],['rounds','Rondas','Ej: 5'],['reps','Reps','Ej: 48'],['weight','Peso','Ej: 20 kg']].map(([f,l,ph])=>`<div><div class="label">${l}</div><input class="inp" value="${esc(log[f]||'')}" placeholder="${ph}" oninput="saveClientBlockLog('${sec.id}','${f}',this.value)"/></div>`).join('')}</div></div>`;
-    }
+    // Cronómetro y registro del bloque
+    const spec=blockTimerSpec(sec);
+    h+=`<div class="blk-zone">${hasLog(log)
+      ?`<div class="log-box log-done"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;"><span class="label" style="margin:0;color:var(--ok);">✓ Bloque registrado</span><button class="link" onclick="openBlockLog('${sec.id}')">Editar</button></div>${logHtml(log)}</div>
+        <div class="center" style="margin-top:8px;"><button class="link" style="font-size:13px;" onclick="startBlock('${sec.id}')">Repetir cronómetro</button></div>`
+      :`<button class="btn" onclick="startBlock('${sec.id}')">▶ Iniciar bloque</button><div class="note center" style="font-size:12.5px;">${esc(spec.desc)}</div>
+        <div class="center" style="margin-top:4px;"><button class="link" style="font-size:13px;" onclick="openBlockLog('${sec.id}')">Registrar sin cronómetro</button></div>`}</div>`;
     h+=`</div></div>`;
   });
   h+=`<div id="complete-zone">`;
@@ -2608,6 +2691,184 @@ function startGuidedInitial(){
 function startCountdown(name,sec){runTimer([{phase:'Preparate',name,sec:10},{phase:'¡Ya!',name,sec}],()=>showToast('Tiempo. Anotá tu resultado.'));}
 function startStopwatch(k,name){runTimer([{phase:'Preparate',name,sec:5},{phase:'Sostené',name,sec:null,hint:'Tocá "Detener" cuando pierdas la posición.'}],null);TMR.field=k;}
 function finishStopwatch(){if(!TMR)return;const k=TMR.field,secs=TMR.el;stopTimer(true);beep(1200,300);if(k){pickEvalVal(k,secs);showToast(`Guardado: ${secs} segundos.`);}}
+
+/* ════════════════════════════════════════════════════════════
+   CRONÓMETRO POR BLOQUE
+   El cliente toca "Iniciar bloque" y el cronómetro se arma según el método de la sección.
+   Al terminar se abre la ventana de registro (peso, reps, series, tiempo, esfuerzo, notas),
+   que se guarda en workoutLogs y Jonathan ve en Carga y en el editor de planes.
+   ════════════════════════════════════════════════════════════ */
+// "20 min", "20", "8:30", "45 s" → segundos. unit = unidad cuando no se escribió ninguna
+function parseSecs(v,unit){
+  const s=String(v||'').trim().toLowerCase();if(!s)return 0;
+  const mm=s.match(/(\d+):(\d{1,2})/);if(mm)return Number(mm[1])*60+Number(mm[2]);
+  const n=parseFloat(s.replace(',','.'));if(isNaN(n)||n<=0)return 0;
+  const u=s.replace(/[\d.,:\s]/g,'');
+  if(u.startsWith('m')||u==="'")return Math.round(n*60);
+  if(u.startsWith('s')||u==='"')return Math.round(n);
+  return Math.round(unit==='min'?n*60:n);
+}
+function parseCount(v,d){const m=String(v||'').match(/\d+/);const n=m?parseInt(m[0],10):0;return n>0?n:d;}
+const LOG_ROUNDS=['AMRAP','RFT','For Time'];
+function blockTimerSpec(sec){
+  ensureMethodMeta(sec);
+  const ex=(sec.exercises||[]).map(e=>String(e.name||'').trim()).filter(Boolean);
+  const exAt=i=>ex.length?ex[i%ex.length]:'';
+  const S=[],dflt=[];let counter=null,rest=false,desc='';
+  const mins=(v,d,l)=>{const t=parseSecs(v,'min');if(t)return t;dflt.push(l);return d;};
+  const cnt=(v,d,l)=>{const n=parseCount(v,0);if(n)return n;dflt.push(l);return d;};
+  switch(sec.method){
+    case'AMRAP':{const t=mins(sec.time,600,'10 min');S.push({phase:'AMRAP',name:sec.name,sec:t,list:true,hint:'Tantas rondas como puedas. Sumá cada ronda con +.'});counter='Rondas';desc=`Cuenta regresiva de ${mmss(t)}`;break;}
+    case'EMOM':{const t=mins(sec.time,600,'10 min'),n=Math.max(1,Math.round(t/60));
+      for(let i=0;i<n;i++)S.push({phase:`Minuto ${i+1} de ${n}`,name:exAt(i)||sec.name,sec:60,next:i<n-1?exAt(i+1):'',hint:'Lo que sobra del minuto es tu descanso.'});
+      desc=`${n} minuto${n===1?'':'s'}, con aviso al inicio de cada uno`;break;}
+    case'TABATA':{const r=cnt(sec.tabataRounds,8,'8 rondas');
+      for(let i=0;i<r;i++){S.push({phase:`Trabajo · ronda ${i+1} de ${r}`,name:exAt(i)||'Máximo esfuerzo',sec:20,next:i<r-1?'Descanso 10 s':''});if(i<r-1)S.push({phase:'Descanso',name:'Respirá',sec:10,next:exAt(i+1)});}
+      desc=`${r} rondas de 20 s de trabajo y 10 s de descanso`;break;}
+    case'Micro-HIIT':{let w=parseSecs(sec.hiitWork,'s'),rs=parseSecs(sec.hiitRest,'s');if(!w){w=10;dflt.push('10 s de trabajo');}if(!rs){rs=20;dflt.push('20 s de descanso');}const r=cnt(sec.hiitRounds,8,'8 rondas');
+      for(let i=0;i<r;i++){S.push({phase:`Trabajo · ronda ${i+1} de ${r}`,name:exAt(i)||'Máxima potencia',sec:w,next:i<r-1?`Descanso ${rs} s`:''});if(i<r-1)S.push({phase:'Descanso',name:'Recuperá',sec:rs,next:exAt(i+1)});}
+      desc=`${r} rondas de ${w} s de trabajo y ${rs} s de descanso`;break;}
+    case'10-20-30':{const r=cnt(sec.rounds,5,'5 rondas');
+      for(let i=0;i<r;i++){const n=exAt(i)||sec.name;S.push({phase:`Suave · ronda ${i+1} de ${r}`,name:n,sec:30,next:'Moderado 20 s'});S.push({phase:`Moderado · ronda ${i+1} de ${r}`,name:n,sec:20,next:'Máximo 10 s'});S.push({phase:`Máximo · ronda ${i+1} de ${r}`,name:n,sec:10,next:i<r-1?'Suave 30 s':''});}
+      desc=`${r} ronda${r===1?'':'s'} de 30 s suave, 20 s moderado y 10 s al máximo`;break;}
+    case'EDT':{const t=mins(sec.edtTime,900,'15 min');S.push({phase:'PR Zone',name:sec.name,sec:t,list:true,hint:'Alterná los ejercicios y sumá cada serie con +.'});counter='Series';desc=`PR Zone de ${mmss(t)}`;break;}
+    case'RFT':case'For Time':{const r=parseCount(sec.method==='RFT'?sec.rounds:sec.forTimeRounds,0);
+      S.push({phase:sec.method==='RFT'?'Rondas contra el tiempo':'For Time',name:sec.name,sec:null,list:true,target:r,hint:r?`Objetivo: ${r} rondas. Sumá cada ronda con + y tocá Terminar al completar.`:'Tocá Terminar al completar el trabajo.'});
+      counter='Rondas';desc='Cronómetro ascendente: marca tu tiempo final';break;}
+    default:{S.push({phase:'En curso',name:sec.name,sec:null,list:true,hint:'Sumá cada serie con + y usá el descanso entre series.'});counter='Series';rest=true;desc='Cronómetro del bloque con descanso entre series';}
+  }
+  const total=S.every(s=>s.sec!==null)?S.reduce((a,s)=>a+s.sec,0):0;
+  return{steps:S,counter,rest,desc,dflt,total};
+}
+let BT=null;
+function findTodaySection(secId){const {plan}=getTodayPlan(MYDOC||{});return (plan?.sections||[]).find(s=>s.id===secId)||null;}
+function startBlock(secId){
+  const sec=findTodaySection(secId);if(!sec)return;
+  const spec=blockTimerSpec(sec);
+  stopTimer(true);stopBlockTimer();
+  try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}catch{}
+  keepAwake(true);beep(660,60);
+  const ov=document.createElement('div');ov.id='tmr';document.body.appendChild(ov);
+  const first=spec.steps[0];
+  const steps=[{phase:'Preparate',name:`${sec.name} · ${sec.method}`,sec:10,next:first.list?'':first.name,hint:spec.dflt.length?`Sin dato cargado, se usa: ${spec.dflt.join(', ')}.`:spec.desc},...spec.steps];
+  BT={sec,spec,steps,i:0,left:10,el:0,total:0,paused:false,count:0,rest:0,ov,last:Date.now(),iv:null};
+  drawBlock();BT.iv=setInterval(tickBlock,250);
+}
+function tickBlock(){
+  if(!BT||BT.paused)return;
+  const now=Date.now();let d=Math.floor((now-BT.last)/1000);if(d<1)return;BT.last+=d*1000;
+  const quiet=d>2; // si el celular estuvo bloqueado, se pone al día sin sonar en cada segundo
+  while(d-->0&&BT)blockSecond(quiet);
+  if(BT)drawBlock();
+}
+function blockSecond(quiet){
+  const s=BT.steps[BT.i];
+  if(s.phase!=='Preparate')BT.total++;
+  if(BT.rest>0){BT.rest--;if(!quiet&&BT.rest<=3&&BT.rest>0)beep(880,90);if(BT.rest===0){beep(1046,380);buzz([200,80,200]);}}
+  if(s.sec===null){BT.el++;return;}
+  BT.left--;if(!quiet&&BT.left<=3&&BT.left>0)beep(880,90);
+  if(BT.left<=0)nextBlockStep(true,true);
+}
+function nextBlockStep(auto,noDraw){
+  if(!BT)return;BT.i++;
+  if(BT.i>=BT.steps.length){finishBlock(true);return;}
+  const s=BT.steps[BT.i];BT.left=s.sec;BT.el=0;BT.last=auto?BT.last:Date.now();
+  beep(/^(Descanso|Suave)/.test(s.phase)?520:1046,auto?380:120);buzz(auto?[200,80,200]:60);
+  if(!noDraw)drawBlock();
+}
+function drawBlock(){
+  if(!BT)return;
+  const s=BT.steps[BT.i],sp=BT.spec,up=s.sec===null,prep=s.phase==='Preparate',resting=BT.rest>0;
+  const col=resting||/^(Descanso|Suave)/.test(s.phase)?'var(--warn)':prep?'var(--muted)':'var(--accent)';
+  const main=resting?BT.rest:(up?BT.el:BT.left);
+  const pct=sp.total&&!prep?Math.min(100,BT.total/sp.total*100):0;
+  const exs=(BT.sec.exercises||[]).filter(e=>e.name||e.reps);
+  const list=s.list&&exs.length?`<div class="tmr-list">${exs.map(e=>`<div><span>${esc(e.name||'Ejercicio')}</span>${e.reps?`<b>${esc(e.reps)}</b>`:''}</div>`).join('')}</div>`:'';
+  const counter=sp.counter&&!prep?`<div class="tmr-count"><button type="button" onclick="blockCount(-1)" aria-label="Restar">−</button><div><b>${BT.count}${s.target?`<small>/${s.target}</small>`:''}</b><span>${sp.counter}</span></div><button type="button" onclick="blockCount(1)" aria-label="Sumar">+</button></div>`:'';
+  const rest=sp.rest&&!prep?(resting?`<button class="btn btn-warn" style="margin:14px 0 0;" onclick="blockRest(0)">Terminar descanso</button>`
+    :`<div class="tmr-rest">${[60,90,120,180].map(x=>`<button type="button" class="chip" onclick="blockRest(${x})">Desc. ${mmss(x)}</button>`).join('')}</div>`):'';
+  const acts=[`<button class="btn btn-dark" onclick="pauseBlock()">${BT.paused?'Seguir':'Pausa'}</button>`];
+  if(!up||prep)acts.push(`<button class="btn btn-dark" onclick="nextBlockStep()">${prep?'Empezar ya':'Saltar'}</button>`);
+  BT.ov.innerHTML=`<div class="tmr-in">
+    <div class="label" style="color:${col};font-size:14px;">${resting?'Descanso entre series':esc(s.phase)}${BT.paused?' · en pausa':''}</div>
+    <div class="tmr-name">${esc(s.name)}</div>
+    <div class="tmr-time" style="${resting?'color:var(--warn);':''}">${mmss(main)}</div>
+    ${resting?`<div class="note">Tiempo del bloque: ${mmss(BT.total)}</div>`:''}
+    ${pct?`<div class="tmr-bar"><i style="width:${pct}%"></i></div><div class="note" style="margin-top:4px;">Bloque: ${mmss(BT.total)} de ${mmss(sp.total)}</div>`:''}
+    ${s.next?`<div class="note" style="margin-top:6px;">Sigue: ${esc(s.next)}</div>`:''}
+    ${s.hint?`<div class="${prep?'note':'tmr-cue'}" style="margin-top:6px;">${esc(s.hint)}</div>`:''}
+    ${list}${counter}${rest}
+    <div class="tmr-acts"><div class="${acts.length>1?'grid2':''}">${acts.join('')}</div>
+      <button class="btn" onclick="finishBlock()">Terminar bloque</button>
+      <button class="btn btn-ghost" onclick="cancelBlock()">Salir sin registrar</button></div></div>`;
+}
+function blockCount(n){if(!BT)return;BT.count=Math.max(0,BT.count+n);if(n>0){beep(990,70);buzz(40);}drawBlock();}
+function blockRest(sec){if(!BT)return;BT.rest=sec;if(sec)beep(520,120);drawBlock();}
+function pauseBlock(){if(!BT)return;BT.paused=!BT.paused;if(!BT.paused)BT.last=Date.now();drawBlock();}
+function stopBlockTimer(){if(BT){clearInterval(BT.iv);if(BT.ov)BT.ov.remove();BT=null;}keepAwake(false);}
+function cancelBlock(){if(BT&&BT.total>10&&!confirm('¿Salir del bloque sin registrar el resultado?'))return;stopBlockTimer();}
+function finishBlock(auto){
+  if(!BT)return;const b=BT;stopBlockTimer();beep(1200,500);buzz([300,120,300]);
+  openBlockLog(b.sec.id,{time:b.total?mmss(b.total):'',count:b.count,counter:b.spec.counter,auto:!!auto});
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&BT)keepAwake(true);});
+
+/* ── Registro del bloque ── */
+// Un registro tiene datos si el cliente anotó algo (también acepta el formato anterior: time, rounds, reps, weight)
+function hasLog(e){return !!(e&&(e.time||e.sets||e.rounds||e.reps||e.weight||e.rpe||e.notes||(Array.isArray(e.ex)&&e.ex.some(x=>x&&(x.sets||x.reps||x.w)))));}
+function logHtml(e){
+  if(!e)return'';
+  const top=[e.time&&'Tiempo '+e.time,e.sets&&'Series '+e.sets,e.rounds&&'Rondas '+e.rounds,e.reps&&(e.method==='EDT'?'Reps totales ':e.method==='AMRAP'?'Reps extra ':'Reps ')+e.reps,e.weight&&'Peso '+e.weight,e.rpe&&'Esfuerzo '+e.rpe+'/10'].filter(Boolean);
+  const ex=(Array.isArray(e.ex)?e.ex:[]).filter(x=>x&&(x.sets||x.reps||x.w));
+  return`${top.length?`<div class="v">${top.map(esc).join(' · ')}</div>`:''}${ex.map(x=>`<div class="log-ex-row"><span>${esc(x.n||'Ejercicio')}</span><span>${esc([x.sets&&x.sets+' series',x.reps&&x.reps+' reps',x.w].filter(Boolean).join(' · '))}</span></div>`).join('')}${e.notes?`<div class="note" style="margin-top:6px;white-space:pre-wrap;">"${esc(e.notes)}"</div>`:''}`;
+}
+// Registro de una sección para una fecha de plan (contempla planes pasados que el cliente hizo otro día)
+function clientLogFor(c,date,secId){
+  const L=c.workoutLogs||{};if(L[`${date}_${secId}`])return L[`${date}_${secId}`];
+  const rd=(c.rolledDone||{})[date];if(rd&&L[`${rd}_${secId}`])return L[`${rd}_${secId}`];
+  const k=Object.keys(L).filter(k=>k.endsWith('_'+secId)&&k.slice(0,10)>=date).sort()[0];return k?L[k]:null;
+}
+let LOGSEC=null;
+function openBlockLog(secId,pre){
+  const c=MYDOC;if(!c)return;const sec=findTodaySection(secId);if(!sec)return;
+  pre=pre||{};const key=`${today()}_${secId}`,old=(c.workoutLogs||{})[key]||{};
+  const m=sec.method;
+  LOGSEC={secId,method:m,name:sec.name,rpe:Number(old.rpe)||0};
+  const I=(id,label,val,ph,mode)=>`<div><div class="label">${label}</div><input class="inp" id="${id}" value="${esc(val||'')}" placeholder="${esc(ph||'')}" ${mode?`inputmode="${mode}"`:''}/></div>`;
+  const cnt=k=>pre.counter===k&&pre.count?String(pre.count):'';
+  // Un solo registro por bloque: tiempo, series, rondas (si el método las usa), reps y peso
+  const F=[I('bl-time','Tiempo',pre.time||old.time,'Ej: 12:30'),I('bl-sets','Series',cnt('Series')||old.sets,'Ej: 4','numeric')];
+  if(LOG_ROUNDS.includes(m))F.push(I('bl-rounds','Rondas',cnt('Rondas')||old.rounds,'Ej: 5','numeric'));
+  F.push(I('bl-reps',m==='AMRAP'?'Reps extra':'Reps',old.reps,m==='AMRAP'?'Ronda incompleta':'Ej: 10'));
+  F.push(I('bl-weight','Peso',old.weight,'Ej: 20 kg'));
+  const presc=(sec.exercises||[]).filter(e=>e.name).map(e=>`${esc(e.name)}${e.reps?` <b style="color:var(--accent);">${esc(e.reps)}</b>`:''}`).join(' · ');
+  const exHtml='';
+  closeBlockLog();
+  const ov=document.createElement('div');ov.id='blocklog';ov.className='overlay show';
+  ov.innerHTML=`<div class="modal">
+    <div class="label" style="color:var(--accent);">${pre.auto?'Bloque terminado · ':''}Registro del bloque</div>
+    <div class="card-title" style="margin-bottom:2px;">${esc(sec.name)}</div><div class="block-method" style="margin-bottom:14px;">${esc(m)}${esc(methodMetaLabel(sec))}</div>
+    ${presc?`<div class="note" style="font-size:13px;margin:-6px 0 14px;">${presc}</div>`:''}
+    <div class="grid2" style="margin-bottom:6px;">${F.join('')}</div>${exHtml}
+    <div class="msg" id="bl-msg" style="margin-top:10px;"></div>
+    <button class="btn" id="bl-save" onclick="saveBlockLog()">Guardar registro</button>
+    <button class="btn btn-dark" onclick="closeBlockLog()">${pre.auto||pre.time?'Ahora no':'Cancelar'}</button>
+    <div class="note center" style="font-size:12px;">Jonathan ve este registro para ajustar tu plan.</div></div>`;
+  document.body.appendChild(ov);
+}
+function pickLogRpe(n){if(!LOGSEC)return;LOGSEC.rpe=LOGSEC.rpe===n?0:n;document.querySelectorAll('#bl-rpe .chip').forEach((b,i)=>b.classList.toggle('active',i+1===LOGSEC.rpe));}
+function closeBlockLog(){const o=document.getElementById('blocklog');if(o)o.remove();}
+async function saveBlockLog(){
+  const st=LOGSEC,c=MYDOC;if(!st||!c)return;
+  const v=id=>String(document.getElementById(id)?.value||'').trim().slice(0,60);
+  const entry={method:st.method,sec:st.name,time:v('bl-time'),sets:v('bl-sets'),rounds:v('bl-rounds'),reps:v('bl-reps'),weight:v('bl-weight'),
+    done:true,at:new Date().toISOString()};
+  if(!hasLog(entry)){setMsg('bl-msg','Anotá al menos un dato (tiempo, series, reps o peso) antes de guardar.','err');return;}
+  const key=`${today()}_${st.secId}`;
+  busy('bl-save',true,'Guardando…');
+  await updateMine({workoutLogs:{...(c.workoutLogs||{}),[key]:entry}});
+  closeBlockLog();LOGSEC=null;renderClientPlan();showToast('Registro guardado.');
+}
 
 /* ── Jonathan ── */
 let evalSelId=null,admEval=null;
